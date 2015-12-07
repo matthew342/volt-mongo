@@ -36,10 +36,10 @@ module Volt
 
         if Volt.config.db_uri.present?
           db_name = Volt.config.db_uri.split('/').last || Volt.config.db_name
-          @db ||= ::Mongo::Client.new(Volt.config.db_uri, database: db_name, :monitoring => false)
+          @db ||= ::Mongo::Client.new(Volt.config.db_uri, database: db_name, :monitoring => false, :socket_timeout => 8)
         else
           db_name = Volt.config.db_name
-          @db ||= ::Mongo::Client.new("mongodb://#{Volt.config.db_host}:#{Volt.config.db_port}", database: db_name, :monitoring => false)
+          @db ||= ::Mongo::Client.new("mongodb://#{Volt.config.db_host}:#{Volt.config.db_port}", database: db_name, :monitoring => false, :socket_timeout => 8)
         end
 
         @db

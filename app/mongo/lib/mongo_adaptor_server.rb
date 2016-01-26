@@ -34,12 +34,26 @@ module Volt
       def db
         return @db if @db
 
-        if Volt.config.db_uri.present?
-          db_name = Volt.config.db_uri.split('/').last || Volt.config.db_name
-          @db ||= ::Mongo::Client.new(Volt.config.db_uri, database: db_name, :monitoring => false)
+        # change deprecated keys to match new format.
+        Volt.config.to_h.keys.grep(/^DB_/i).each do |db_key|
+          key = db_key.to_s.sub(/db_/i, '')
+          Volt.logger.warn "config.db_* keys are deprecated. Please change config.#{db_key} to config.db.#{key} in your config/app.rb."
+          Volt.configure do |c|
+            c.send("#{key.downcase}=", Volt.config.to_h[db_key])
+          end
+        end
+
+        # set default host and port if not set.
+        Volt.configure do |c|
+          c.db.host = '127.0.0.1' unless Volt.config.db.host
+          c.db.port = '27017' unless Volt.config.db.port
+        end
+
+        db_name = Volt.config.db.uri.try(:split, '/').try(:last) || Volt.config.db.database || Volt.config.db.name
+        if Volt.config.db.uri.present?
+          @db ||= ::Mongo::Client.new(Volt.config.db.uri, database: db_name, :monitoring => false)
         else
-          db_name = Volt.config.db_name
-          @db ||= ::Mongo::Client.new("mongodb://#{Volt.config.db_host}:#{Volt.config.db_port}", database: db_name, :monitoring => false)
+          @db ||= ::Mongo::Client.new("mongodb://#{Volt.config.db.host}:#{Volt.config.db.port}", database: db_name, :monitoring => false)
         end
 
         @db

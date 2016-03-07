@@ -1,7 +1,7 @@
 module Volt
   class DataStore
     class MongoAdaptorClient < BaseAdaptorClient
-      data_store_methods :find, :where, :skip, :order, :limit#, :count
+      data_store_methods :find, :where, :skip, :order, :limit, :count
 
       module MongoArrayStore
         # Find takes a query object
@@ -15,16 +15,17 @@ module Volt
           add_query_part(:sort, sort)
         end
 
-        # def count
-        #   add_query_part(:count).then
-        # end
+        def count(*args, &block)
+          puts 'MongoArrayStore .count'
+          add_query_part(:count).persistor.value
+        end
       end
 
       # Due to the way define_method works, we need to remove the generated
       # methods from data_store_methods before we over-ride them.
       Volt::Persistors::ArrayStore.send(:remove_method, :where)
       Volt::Persistors::ArrayStore.send(:remove_method, :order)
-      # Volt::Persistors::ArrayStore.send(:remove_method, :count)
+      Volt::Persistors::ArrayStore.send(:remove_method, :count)
 
       # include mongo's methods on ArrayStore
       Volt::Persistors::ArrayStore.send(:include, MongoArrayStore)

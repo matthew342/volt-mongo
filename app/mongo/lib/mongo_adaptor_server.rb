@@ -1,5 +1,6 @@
 require 'mongo'
 require 'volt/utils/data_transformer'
+require 'mongo/lib/migration_runner'
 
 # We need to be able to deeply stringify keys for mongo
 class Hash
@@ -49,7 +50,7 @@ module Volt
           c.db.port = '27017' unless Volt.config.db.port
         end
 
-        db_name = Volt.config.db.uri.try(:split, '/').try(:last) || Volt.config.db.database || Volt.config.db.name
+        db_name = Volt.config.db.uri.try(:split, '/').try(:last) || Volt.config.db.database || Volt.config.db.name || "#{Volt.config.app_name}_#{Volt.env}"
         if Volt.config.db.uri.present?
           @db ||= ::Mongo::Client.new(Volt.config.db.uri, database: db_name, :monitoring => false)
         else
@@ -94,21 +95,23 @@ module Volt
       end
 
       def query(collection, query)
-        if ENV['DB_LOG'] && collection.to_s != 'active_volt_instances'
+        #if ENV['DB_LOG'] && collection.to_s != 'active_volt_instances'
           Volt.logger.info("Query: #{collection}: #{query.inspect}")
-        end
+        #end
 
-        allowed_methods = %w(find skip limit sort)
+        allowed_methods = %w(find skip limit sort count)
 
         result = db[collection]
 
         query.each do |query_part|
+          puts "query_part: #{query_part}"
           method_name, *args = query_part
 
           unless allowed_methods.include?(method_name.to_s)
             fail "`#{method_name}` is not part of a valid query"
           end
 
+          # stringify keys
           args = args.map do |arg|
             if arg.is_a?(Hash)
               arg = arg.stringify_keys
@@ -122,6 +125,7 @@ module Volt
           end
 
           result = result.send(method_name, *args)
+          puts "query result: #{result}"
         end
 
         if result.is_a?(::Mongo::Collection::View)
@@ -131,7 +135,7 @@ module Volt
 
             # Volt expects symbol keys
             hash.symbolize_keys
-          end#.tap {|v| puts "QUERY: " + v.inspect }
+          end.tap {|v| puts "QUERY: " + v.inspect }
         end
 
         values = Volt::DataTransformer.transform(result) do |value|
@@ -141,7 +145,7 @@ module Volt
             value
           end
         end
-
+        puts "query values: #{values}"
         values
       end
 
